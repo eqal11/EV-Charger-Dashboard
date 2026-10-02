@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EV Monitor JB — Johor Bahru</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo"><svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"/></svg></div>
+    <div class="sb-brand-text"><div class="name">EV Monitor JB</div><div class="sub">Johor Bahru</div></div>
+  </div>
+  <div class="sb-section">Menu</div>
+  <a class="sb-item active" href="#" onclick="showPage('dashboard');return false"><span class="sb-icon">&#9638;</span><span>Dashboard</span></a>
+  <a class="sb-item" href="#" onclick="showPage('map');return false"><span class="sb-icon">&#128506;</span><span>Station Map</span></a>
+  <a class="sb-item" href="#" onclick="showPage('stats');return false"><span class="sb-icon">&#128202;</span><span>Statistics</span></a>
+  <a class="sb-item" href="#" onclick="showPage('chargers');return false"><span class="sb-icon">&#128268;</span><span>Charger Types</span></a>
+  <a class="sb-item" href="#" onclick="showPage('stations');return false"><span class="sb-icon">&#128203;</span><span>Station List</span></a>
+  <div class="sb-spacer"></div>
+  <div class="sb-section">Other</div>
+  <a class="sb-item" href="#"><span class="sb-icon">&#9881;</span><span>Settings</span></a>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left"><button class="hamburger" onclick="toggleSidebar()">&#9776;</button><div><h1>System Overview</h1><p>EV charging station data visualisation in Johor Bahru</p></div></div>
+    <div class="topbar-right">
+      <div class="source-badge"><div class="source-dot"></div>Source: PlugShare / Verified 2024</div>
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle dark mode">&#127769;</button>
+      <div class="avatar">JB</div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active" style="overflow-y:auto;flex:1;padding:20px 24px">
+    <div class="kpi-row">
+      <div class="kpi-card c1"><div class="kpi-icon">&#9889;</div><div class="kpi-label">Total EV Stations</div><div class="kpi-val" data-count="108">0</div><div class="kpi-sub"><span class="live-dot"></span><span id="kpi-available">108</span> available now</div></div>
+      <div class="kpi-card c2"><div class="kpi-icon">&#128268;</div><div class="kpi-label">Charger Types</div><div class="kpi-val" data-count="3">0</div><div class="kpi-sub">DC CCS &middot; AC Type 2 &middot; CHAdeMO</div></div>
+      <div class="kpi-card c3"><div class="kpi-icon">&#127970;</div><div class="kpi-label">Active Operators</div><div class="kpi-val" id="kpi-ops" data-count="0">0</div><div class="kpi-sub" id="kpi-ops-sub">Networks in JB</div></div>
+      <div class="kpi-card c4"><div class="kpi-icon">&#128205;</div><div class="kpi-label">Areas Covered</div><div class="kpi-val" id="kpi-areas" data-count="0">0</div><div class="kpi-sub">Districts &amp; zones in JB</div></div>
+    </div>
+
+    <div class="row2">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-hd">
+          <div class="card-title">&#128506; EV Station Map &mdash; Johor Bahru</div>
+          <div class="map-legend">
+            <div class="leg"><div class="leg-dot" style="background:#2563eb"></div>DC CCS</div>
+            <div class="leg"><div class="leg-dot" style="background:#16a34a"></div>AC Type 2</div>
+            <div class="leg"><div class="leg-dot" style="background:#f97316"></div>DC + AC</div>
+          </div>
+        </div>
+        <div class="map-filter-row">
+          <button class="mfchip on" onclick="filterMap('all',this)">All</button>
+          <button class="mfchip" onclick="filterMap('DC',this)">DC Fast</button>
+          <button class="mfchip" onclick="filterMap('AC',this)">AC Only</button>
+          <button class="mfchip" onclick="filterMap('DC / AC',this)">DC + AC</button>
+          <button class="locate-btn" onclick="locateMe('main')">&#9678; Locate me &amp; find nearest</button>
+        </div>
+        <div id="main-map"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:0">
+        <div class="card-hd"><div class="card-title">&#129518; Charger Types</div></div>
+        <div class="card-body">
+          <div class="donut-wrap">
+            <canvas id="donut-chart" style="max-width:170px;max-height:170px"></canvas>
+            <div class="donut-centre"><div class="dc-num">108</div><div class="dc-lbl">stations</div></div>
+          </div>
+          <div class="type-legend" id="type-legend"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-hd"><div class="card-title">&#128202; Stations by Area</div></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="area-bar"></canvas></div></div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-hd"><div class="card-title">&#128203; EV Station List</div><div class="card-sub" id="dash-list-count">108 stations</div></div>
+        <div class="search-row">
+          <div class="search-box"><span style="font-size:14px">&#128269;</span><input id="dash-search" placeholder="Search station name..." oninput="filterDashList()"></div>
+          <select class="area-select" id="dash-area-sel" onchange="filterDashList()"><option value="">All Areas</option></select>
+        </div>
+        <div class="slist" id="dash-slist" style="max-height:320px;overflow-y:auto"></div>
+      </div>
+    </div>
+    <div class="dash-footer">EV Charger Dashboard &mdash; Johor Bahru &nbsp;&middot;&nbsp; Source: PlugShare 2024 &nbsp;&middot;&nbsp; Web GIS Project</div>
+  </div>
+
+  <!-- MAP PAGE -->
+  <div id="page-map" class="page page-map" style="flex:1;flex-direction:column">
+    <div class="full-map-controls">
+      <button class="mfchip on" onclick="filterFullMap('all',this)">All (108)</button>
+      <button class="mfchip" onclick="filterFullMap('DC',this)">&#9889; DC Fast</button>
+      <button class="mfchip" onclick="filterFullMap('AC',this)">&#128268; AC</button>
+      <button class="mfchip" onclick="filterFullMap('DC / AC',this)">DC+AC</button>
+      <select class="mini-sel" id="fm-op" onchange="applyFullFilters()"><option value="">All operators</option></select>
+      <select class="mini-sel" id="fm-kw" onchange="applyFullFilters()">
+        <option value="">Any power</option>
+        <option value="0-22">&le; 22 kW</option>
+        <option value="23-99">23&ndash;99 kW</option>
+        <option value="100-9999">&ge; 100 kW</option>
+      </select>
+      <button class="locate-btn" onclick="locateMe('full')" style="margin-left:0">&#9678; Locate me &amp; find nearest</button>
+      <div class="map-legend" style="margin-left:auto">
+        <div class="leg"><div class="leg-dot" style="background:#2563eb"></div>DC CCS</div>
+        <div class="leg"><div class="leg-dot" style="background:#16a34a"></div>AC Type 2</div>
+        <div class="leg"><div class="leg-dot" style="background:#f97316"></div>DC + AC</div>
+      </div>
+    </div>
+    <div id="full-map" style="flex:1"></div>
+  </div>
+
+  <!-- STATS PAGE -->
+  <div id="page-stats" class="page" style="overflow-y:auto;flex:1;padding:20px 24px">
+    <div class="row2-eq">
+      <div class="card" style="margin-bottom:0"><div class="card-hd"><div class="card-title">&#128202; Stations by Area (All)</div></div><div class="card-body"><div style="height:280px;position:relative"><canvas id="big-area-bar"></canvas></div></div></div>
+      <div class="card" style="margin-bottom:0"><div class="card-hd"><div class="card-title">&#127991; Operator Market Share</div></div><div class="card-body"><div style="height:280px;position:relative"><canvas id="op-bar"></canvas></div></div></div>
+    </div>
+    <div style="margin-top:16px">
+    <div class="row2-eq">
+      <div class="card" style="margin-bottom:0"><div class="card-hd"><div class="card-title">&#127970; Station by Location Type</div></div><div class="card-body"><div style="height:240px;position:relative"><canvas id="loc-bar"></canvas></div></div></div>
+      <div class="card" style="margin-bottom:0"><div class="card-hd"><div class="card-title">&#128205; Area Density Ranking</div></div><div class="card-body"><div class="area-bar-list" id="area-rank"></div></div></div>
+    </div>
+    </div>
+  </div>
+
+  <!-- CHARGER TYPES PAGE -->
+  <div id="page-chargers" class="page" style="overflow-y:auto;flex:1;padding:20px 24px">
+    <div class="row3" id="charger-type-cards"></div>
+    <div class="card">
+      <div class="card-hd"><div class="card-title">&#9889; Charger Type Distribution</div></div>
+      <div class="card-body" style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+        <div style="width:220px;height:220px;position:relative;flex-shrink:0">
+          <canvas id="charger-donut"></canvas>
+          <div class="donut-centre" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"><div class="dc-num">108</div><div class="dc-lbl">stations</div></div>
+        </div>
+        <div id="charger-legend" style="flex:1;display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATIONS PAGE -->
+  <div id="page-stations" class="page" style="overflow-y:auto;flex:1;display:flex;flex-direction:column">
+    <div class="card" style="margin:16px 24px;flex:1;display:flex;flex-direction:column">
+      <div class="card-hd"><div class="card-title">&#128203; All EV Stations &mdash; Johor Bahru</div><div class="card-sub" id="tbl-count">108 stations</div></div>
+      <div class="tbl-controls">
+        <div style="position:relative;flex:1;min-width:180px"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:#94a3b8">&#128269;</span><input class="tbl-search" id="tbl-search" placeholder="Search name, area, operator..." oninput="filterTable()"></div>
+        <select class="tbl-sel" id="tbl-type" onchange="filterTable()"><option value="">All Types</option><option>DC</option><option>AC</option><option value="DC / AC">DC+AC</option></select>
+        <select class="tbl-sel" id="tbl-op" onchange="filterTable()"><option value="">All Operators</option></select>
+        <select class="tbl-sel" id="tbl-area" onchange="filterTable()"><option value="">All Areas</option></select>
+        <span class="tbl-count" id="tbl-count2">108 stations</span>
+      </div>
+      <div class="tbl-wrap" style="flex:1">
+        <table class="ev-table">
+          <thead><tr><th>#</th><th>Station Name</th><th>Area</th><th>Type</th><th>Power</th><th>Operator</th><th>Pricing</th><th>Hours</th><th>Bays</th><th>Directions</th></tr></thead>
+          <tbody id="tbl-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<div class="backdrop" id="backdrop" onclick="toggleSidebar()"></div>
+
+<!-- Directions modal -->
+<div id="dir-modal" class="dir-modal" style="display:none">
+  <div class="dir-card">
+    <div class="dir-head"><h3 id="dir-title">Get directions</h3><button class="dir-x" onclick="closeDir()">&times;</button></div>
+    <p class="dir-sub" id="dir-sub">Open this station in your preferred maps app.</p>
+    <div class="dir-actions" id="dir-actions"></div>
+  </div>
+</div>
+
+<!-- Nearest EV panel -->
+<div id="near-panel" class="near-panel" style="display:none">
+  <div class="near-head"><span>&#128205; Nearest EV to you</span><button class="dir-x" onclick="closeNear()">&times;</button></div>
+  <div id="near-list"></div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
